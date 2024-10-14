@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-db
+
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - backend-network
+
+  app:
+    build: .
+    container_name: node-app
+    depends_on:
+      - postgres
+
+    environment:
+      DB_HOST: postgres
+      DB_USER: user
+      DB_PASSWORD: 'password'
+      DB_NAME: postgres
+      DB_PORT: 5432
+
+    ports:
+      - "4200:4200"
+
+    networks:
+      - backend-network
+      
+    volumes:
+      - .:/usr/src/app
+
+volumes:
+  postgres_data:
+
+networks:
+  backend-network:
