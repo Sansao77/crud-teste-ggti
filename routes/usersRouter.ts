@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
-import pool from '../config/database'; // Se o database.ts também estiver usando TS, remova a extensão .js
-import { v4 as uuidv4 } from 'uuid';
+import User from '../models/user'; // Importa o modelo User
+import { v4 as uuidv4 } from 'uuid'; // Importa o v4 do uuid
 
 const router = express.Router();
 
@@ -8,6 +8,14 @@ const router = express.Router();
 interface UserRequestBody {
   name: string;
   email: string;
+  specialty: string;
+  crm: string;
+  phone?: string;
+  date_employment?: string;
+  time_begin?: string;
+  time_end?: string;
+  status?: boolean;
+  days_attend?: string[];
 }
 
 // Tipagem para o parâmetro 'id' nas requisições
@@ -18,10 +26,10 @@ interface UserIdParams {
 // Obtendo a lista de usuários do banco de dados
 router.get('/users', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT * FROM users');
-    res.status(200).json(result.rows);
+    const users = await User.findAll();
+    return res.status(200).json(users); // Retorna a resposta
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message }); // Retorna a resposta em caso de erro
   }
 });
 
@@ -30,49 +38,70 @@ router.get('/users/:id', async (req: Request<UserIdParams>, res: Response) => {
   const { id } = req.params;
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const user = await User.findByPk(id);
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
-    res.status(200).json(result.rows[0]);
+    return res.status(200).json(user); // Retorna a resposta
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message }); // Retorna a resposta em caso de erro
   }
 });
 
 // Criando um novo usuário
 router.post('/users', async (req: Request<{}, {}, UserRequestBody>, res: Response) => {
-  const { name, email } = req.body;
+  const { name, email, specialty, crm, phone, date_employment, time_begin, time_end, status, days_attend } = req.body;
 
   try {
-    const result = await pool.query(
-      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3) RETURNING *',
-      [uuidv4(), name, email]
-    );
-    res.status(201).json(result.rows[0]);
+    const user = await User.create({
+      id: uuidv4(), // Gerando o UUID aqui
+      name,
+      email,
+      specialty,
+      crm,
+      phone,
+      date_employment,
+      time_begin,
+      time_end,
+      status,
+      days_attend,
+    });
+    return res.status(201).json(user); // Retorna a resposta
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message }); // Retorna a resposta em caso de erro
   }
 });
 
 // Atualizando usuário
 router.put('/users/:id', async (req: Request<UserIdParams, {}, UserRequestBody>, res: Response) => {
   const { id } = req.params;
-  const { name, email } = req.body;
+  const { name, email, specialty, crm, phone, date_employment, time_begin, time_end, status, days_attend } = req.body;
 
   try {
-    const result = await pool.query(
-      'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *',
-      [name, email, id]
-    );
+    const user = await User.findByPk(id);
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
-    res.status(200).json(result.rows[0]);
+
+    // Atualiza os dados do usuário
+    await user.update({
+      name,
+      email,
+      specialty,
+      crm,
+      phone,
+      date_employment,
+      time_begin,
+      time_end,
+      status,
+      days_attend,
+    });
+
+    return res.status(200).json(user); // Retorna a resposta
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message }); // Retorna a resposta em caso de erro
   }
 });
 
@@ -81,14 +110,16 @@ router.delete('/users/:id', async (req: Request<UserIdParams>, res: Response) =>
   const { id } = req.params;
 
   try {
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+    const user = await User.findByPk(id);
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
-    res.status(200).json({ message: 'Usuário deletado com sucesso' });
+
+    await user.destroy();
+    return res.status(200).json({ message: 'Usuário deletado com sucesso' }); // Retorna a resposta
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message }); // Retorna a resposta em caso de erro
   }
 });
 
